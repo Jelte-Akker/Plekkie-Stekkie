@@ -27,12 +27,16 @@ async def main():
     # sync telegram users
     await get_updates()
 
+    print('updated telegram users')
+
     old_listings = load_listings()
     current_listings = set()
 
+    print('initiated listings')
+
     async with async_playwright() as p:
         random_user_agent = random.choice(USER_AGENTS)
-
+        print('set user agent')
         browser = await p.chromium.launch(
             headless=True,
             args=[
@@ -40,20 +44,22 @@ async def main():
             "--disable-setuid-sandbox",
             "--disable-blink-features=AutomationControlled"
         ],)
+        print('set browser')
         context = await browser.new_context(
             user_agent=random_user_agent, 
             viewport={"width": 1920, "height": 1080},
             locale="en-US"
         )
+        print('set context')
         page = await context.new_page()
-        
+        print('set page')
         await safe_goto(page, URL)
-        await page.wait_for_load_state("domcontentloaded")
+        print('loaded page')
 
         while True:
             # --- Scrape current page ---
             listings = await page.query_selector_all(".projectproperty-tile > a")
-
+            print('got listings')
             for listing in listings:
                 link = await listing.get_attribute("href")
                 listing_text = f"{link}"
@@ -61,7 +67,7 @@ async def main():
 
             # --- Try to find "Next" button ---
             next_button = await page.query_selector(".pagination__next")
-
+            print('next page')
             if next_button:
                 is_disabled = await next_button.get_attribute("class") or ""
                 if "disabled" in is_disabled:
