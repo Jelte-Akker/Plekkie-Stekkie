@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from dotenv import load_dotenv
@@ -82,3 +83,17 @@ async def get_updates():
         # Example: if message_text == "/unsubscribe", call remove_subscriber(chat_id)
 
 # Call this function periodically (e.g., every minute) to check for new messages and subscribers.
+
+async def safe_goto(page, url, retries=3, wait_for="networkidle"):
+    for attempt in range(retries):
+        try:
+            await page.goto(url)
+            await page.wait_for_load_state(wait_for)
+            if page.url != url:
+                raise Exception(f"Unexpected redirect: {page.url}")
+            return
+        except Exception as e:
+            print(f"[!] Error loading page (attempt {attempt + 1}): {e}")
+            if attempt == retries - 1:
+                raise
+            await asyncio.sleep(5)  # wait before retry

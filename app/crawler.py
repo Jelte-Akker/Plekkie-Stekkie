@@ -1,6 +1,6 @@
 import asyncio
 from playwright.async_api import async_playwright
-from utils import broadcast_message, get_updates, load_listings, save_listings
+from utils import broadcast_message, get_updates, load_listings, safe_goto, save_listings
 import random
 
 USER_AGENTS = [
@@ -47,7 +47,7 @@ async def main():
         )
         page = await context.new_page()
         
-        await page.goto(URL)
+        await safe_goto(page, URL)
         await page.wait_for_load_state("domcontentloaded")
 
         while True:
