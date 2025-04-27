@@ -1,7 +1,6 @@
 import asyncio
-from dotenv import load_dotenv
 from playwright.async_api import async_playwright
-from utils import broadcast_message, get_updates, load_listings, save_listings, send_telegram
+from utils import broadcast_message, get_updates, load_listings, save_listings
 import random
 
 USER_AGENTS = [
@@ -34,12 +33,22 @@ async def main():
     async with async_playwright() as p:
         random_user_agent = random.choice(USER_AGENTS)
 
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(user_agent=random_user_agent)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-blink-features=AutomationControlled"
+        ],)
+        context = await browser.new_context(
+            user_agent=random_user_agent, 
+            viewport={"width": 1920, "height": 1080},
+            locale="en-US"
+        )
         page = await context.new_page()
         
         await page.goto(URL)
-        await page.wait_for_load_state("networkidle")
+        await page.wait_for_load_state("domcontentloaded")
 
         while True:
             # --- Scrape current page ---
@@ -54,12 +63,12 @@ async def main():
             next_button = await page.query_selector(".pagination__next")
 
             if next_button:
-                is_disabled = await next_button.get_attribute("class")
+                is_disabled = await next_button.get_attribute("class") or ""
                 if "disabled" in is_disabled:
                     break
 
                 await next_button.click()
-                await page.wait_for_load_state("networkidle")
+                await page.wait_for_load_state("domcontentloaded")
                 await asyncio.sleep(2)  # small wait to avoid overload
             else:
                 break
@@ -74,12 +83,13 @@ async def main():
         await broadcast_message(
             message=f"🏠 New Rental Listings:\n\n{body}",
         )
-        save_listings(current_listings)
+
     if removed_listings:
         await broadcast_message(
             message=f"🚫 Removed Listings:\n\n" + "\n\n".join(removed_listings),
         )
-        save_listings(current_listings - removed_listings)
+       
+    save_listings(current_listings)
     print('Fetching completed.')
 
 if __name__ == "__main__":
