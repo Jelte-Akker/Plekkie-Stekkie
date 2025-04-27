@@ -16,5 +16,6 @@ RUN playwright install-deps
 RUN playwright install
 
 COPY app/ ./app
+COPY .env ./app/.env
 
 CMD ["python3", "-u", "app/crawler.py"]
