@@ -15,6 +15,7 @@ USER_AGENTS = [
 URL = "https://www.wonenbijbouwinvest.nl/huuraanbod?query=Utrecht&range=15&price=1000-1500&showAvailable=false&page=1&seniorservice=false&order=recent"
 
 async def repeat_crawl():
+    print('Crawler start')
     while True:
         try:
             await main()
@@ -23,6 +24,7 @@ async def repeat_crawl():
         await asyncio.sleep(30)
 
 async def main():
+    print('Fetching..')
     # sync telegram users
     await get_updates()
 
@@ -78,7 +80,7 @@ async def main():
             message=f"🚫 Removed Listings:\n\n" + "\n\n".join(removed_listings),
         )
         save_listings(current_listings - removed_listings)
-
+    print('Fetching completed.')
 
 if __name__ == "__main__":
     asyncio.run(repeat_crawl())
