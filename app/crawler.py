@@ -1,6 +1,6 @@
 import asyncio
 from playwright.async_api import async_playwright
-from utils import broadcast_message, get_updates, load_listings, safe_goto, save_listings
+from utils import block_scripts, broadcast_message, get_updates, load_listings, safe_goto, save_listings
 import random
 from playwright_stealth import stealth_async
 
@@ -33,61 +33,62 @@ async def main():
     current_listings = set()
 
     # BOUWINVEST CRAWLING
-    async with async_playwright() as p:
-        random_user_agent = random.choice(USER_AGENTS)
+    # async with async_playwright() as p:
+    #     random_user_agent = random.choice(USER_AGENTS)
 
-        browser = await p.chromium.launch(
-            headless=True,
-            args=[
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-blink-features=AutomationControlled"
-        ],)
+    #     browser = await p.chromium.launch(
+    #         headless=True,
+    #         args=[
+    #         "--no-sandbox",
+    #         "--disable-setuid-sandbox",
+    #         "--disable-blink-features=AutomationControlled"
+    #     ],)
 
-        context = await browser.new_context(
-            user_agent=random_user_agent, 
-            viewport={"width": 1920, "height": 1080},
-            locale="en-US"
-        )
+    #     context = await browser.new_context(
+    #         user_agent=random_user_agent, 
+    #         viewport={"width": 1920, "height": 1080},
+    #         locale="en-US"
+    #     )
 
-        page = await context.new_page()
-        await safe_goto(page, URL_BOUWINVEST)
+    #     page = await context.new_page()
+    #     await safe_goto(page, URL_BOUWINVEST)
 
-        while True:
-            # --- Scrape current page ---
-            listings = await page.query_selector_all(".projectproperty-tile > a")
+    #     while True:
+    #         # --- Scrape current page ---
+    #         listings = await page.query_selector_all(".projectproperty-tile > a")
 
-            for listing in listings:
-                link = await listing.get_attribute("href")
-                listing_text = f"{link}"
-                current_listings.add(listing_text)
+    #         for listing in listings:
+    #             link = await listing.get_attribute("href")
+    #             listing_text = f"{link}"
+    #             current_listings.add(listing_text)
 
-            # --- Try to find "Next" button ---
-            next_button = await page.query_selector(".pagination__next")
+    #         # --- Try to find "Next" button ---
+    #         next_button = await page.query_selector(".pagination__next")
 
-            if next_button:
-                is_disabled = await next_button.get_attribute("class") or ""
-                if "disabled" in is_disabled:
-                    break
+    #         if next_button:
+    #             is_disabled = await next_button.get_attribute("class") or ""
+    #             if "disabled" in is_disabled:
+    #                 break
 
-                await next_button.click()
-                await page.wait_for_load_state("domcontentloaded")
-                await asyncio.sleep(2)  # small wait to avoid overload
-            else:
-                break
+    #             await next_button.click()
+    #             await page.wait_for_load_state("domcontentloaded")
+    #             await asyncio.sleep(2)  # small wait to avoid overload
+    #         else:
+    #             break
 
-        await browser.close()
+    #     await browser.close()
 
     # FUNDA CRAWLING
     async with async_playwright() as p:
         random_user_agent = random.choice(USER_AGENTS)
 
-        browser = await p.chromium.launch(
-            headless=False,
+        browser = await p.firefox.launch(
+            headless=True,
             args=[
             "--no-sandbox",
             "--disable-setuid-sandbox",
             "--disable-blink-features=AutomationControlled",
+            "--disable-web-security",
             "--disable-dev-shm-usage",
             "--disable-infobars",
             "--disable-extensions",
@@ -103,13 +104,13 @@ async def main():
         )
 
         page = await context.new_page()
-        await stealth_async(page)
+
         await safe_goto(page, URL_FUNDA)
 
         while True:
             # --- Scrape current page ---
             listings = await page.query_selector_all("h2 a")
-
+            print(listings)
             for listing in listings:
                 link = await listing.get_attribute("href")
                 listing_text = f"https://www.funda.nl{link}"
