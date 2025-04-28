@@ -2,6 +2,7 @@ import asyncio
 from playwright.async_api import async_playwright
 from utils import broadcast_message, get_updates, load_listings, safe_goto, save_listings
 import random
+from playwright_stealth import stealth_async
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -11,7 +12,8 @@ USER_AGENTS = [
 ]
 
 # The page to scrape
-URL = "https://www.wonenbijbouwinvest.nl/huuraanbod?query=Utrecht&range=15&price=1000-1500&showAvailable=false&page=1&seniorservice=false&order=recent"
+URL_BOUWINVEST = "https://www.wonenbijbouwinvest.nl/huuraanbod?query=Utrecht&range=15&price=1000-1500&showAvailable=false&page=1&seniorservice=false&order=recent"
+URL_FUNDA = "https://www.funda.nl/zoeken/huur?selected_area=[%22provincie-utrecht%22]&price=%22900-1500%22&publication_date=%221%22&availability=[%22available%22]&rooms=%222-%22&sort=%22date_down%22"
 
 async def repeat_crawl():
     print('Crawler start')
@@ -27,16 +29,13 @@ async def main():
     # sync telegram users
     await get_updates()
 
-    print('updated telegram users')
-
     old_listings = load_listings()
     current_listings = set()
 
-    print('initiated listings')
-
+    # BOUWINVEST CRAWLING
     async with async_playwright() as p:
         random_user_agent = random.choice(USER_AGENTS)
-        print('set user agent')
+
         browser = await p.chromium.launch(
             headless=True,
             args=[
@@ -44,22 +43,20 @@ async def main():
             "--disable-setuid-sandbox",
             "--disable-blink-features=AutomationControlled"
         ],)
-        print('set browser')
+
         context = await browser.new_context(
             user_agent=random_user_agent, 
             viewport={"width": 1920, "height": 1080},
             locale="en-US"
         )
-        print('set context')
+
         page = await context.new_page()
-        print('set page')
-        await safe_goto(page, URL)
-        print('loaded page')
+        await safe_goto(page, URL_BOUWINVEST)
 
         while True:
             # --- Scrape current page ---
             listings = await page.query_selector_all(".projectproperty-tile > a")
-            print('got listings')
+
             for listing in listings:
                 link = await listing.get_attribute("href")
                 listing_text = f"{link}"
@@ -67,7 +64,7 @@ async def main():
 
             # --- Try to find "Next" button ---
             next_button = await page.query_selector(".pagination__next")
-            print('next page')
+
             if next_button:
                 is_disabled = await next_button.get_attribute("class") or ""
                 if "disabled" in is_disabled:
@@ -78,6 +75,46 @@ async def main():
                 await asyncio.sleep(2)  # small wait to avoid overload
             else:
                 break
+
+        await browser.close()
+
+    # FUNDA CRAWLING
+    async with async_playwright() as p:
+        random_user_agent = random.choice(USER_AGENTS)
+
+        browser = await p.chromium.launch(
+            headless=False,
+            args=[
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-blink-features=AutomationControlled",
+            "--disable-dev-shm-usage",
+            "--disable-infobars",
+            "--disable-extensions",
+            "--window-size=1920,1080",
+            "--start-maximized",
+        ],)
+
+        context = await browser.new_context(
+            user_agent=random_user_agent, 
+            viewport={"width": 1920, "height": 1080},
+            locale="en-US",
+            java_script_enabled=True,
+        )
+
+        page = await context.new_page()
+        await stealth_async(page)
+        await safe_goto(page, URL_FUNDA)
+
+        while True:
+            # --- Scrape current page ---
+            listings = await page.query_selector_all("h2 a")
+
+            for listing in listings:
+                link = await listing.get_attribute("href")
+                listing_text = f"https://www.funda.nl{link}"
+                current_listings.add(listing_text)
+            break
 
         await browser.close()
 
