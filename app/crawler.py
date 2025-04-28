@@ -120,17 +120,11 @@ async def main():
         await browser.close()
 
     new_listings = current_listings - old_listings
-    removed_listings = old_listings - current_listings
 
     if new_listings:
         body = "\n\n".join(new_listings)
         await broadcast_message(
             message=f"🏠 New Rental Listings:\n\n{body}",
-        )
-
-    if removed_listings:
-        await broadcast_message(
-            message=f"🚫 Removed Listings:\n\n" + "\n\n".join(removed_listings),
         )
        
     save_listings(current_listings)
