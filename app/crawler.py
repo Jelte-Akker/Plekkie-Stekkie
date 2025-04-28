@@ -1,8 +1,7 @@
 import asyncio
 from playwright.async_api import async_playwright
-from utils import block_scripts, broadcast_message, get_updates, load_listings, safe_goto, save_listings
+from utils import broadcast_message, get_updates, load_listings, safe_goto, save_listings
 import random
-from playwright_stealth import stealth_async
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
